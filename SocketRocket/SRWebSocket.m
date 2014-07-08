@@ -123,8 +123,14 @@ static NSString *newSHA1String(const char *bytes, size_t length) {
     assert(length >= 0);
     assert(length <= UINT32_MAX);
     CC_SHA1(bytes, (CC_LONG)length, md);
-    
-    return [[NSData dataWithBytes:md length:CC_SHA1_DIGEST_LENGTH] base64Encoding];
+    NSData *data = [NSData dataWithBytes:md length:CC_SHA1_DIGEST_LENGTH];
+    NSString *base64String;
+    if ([data respondsToSelector:@selector(base64EncodedStringWithOptions:)]) {
+        base64String = [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+    } else {
+        base64String = [data performSelector:@selector(base64Encoding) withObject:nil];
+    }
+    return base64String;
 }
 
 @implementation NSData (SRWebSocket)
@@ -649,7 +655,7 @@ static __strong NSData *CRLFCRLF;
             
             NSUInteger usedLength = 0;
             
-            BOOL success = [reason getBytes:(char *)mutablePayload.mutableBytes + sizeof(uint16_t) maxLength:payload.length - sizeof(uint16_t) usedLength:&usedLength encoding:NSUTF8StringEncoding options:NSStringEncodingConversionExternalRepresentation range:NSMakeRange(0, reason.length) remainingRange:&remainingRange];
+            __unused BOOL success = [reason getBytes:(char *)mutablePayload.mutableBytes + sizeof(uint16_t) maxLength:payload.length - sizeof(uint16_t) usedLength:&usedLength encoding:NSUTF8StringEncoding options:NSStringEncodingConversionExternalRepresentation range:NSMakeRange(0, reason.length) remainingRange:&remainingRange];
             
             assert(success);
             assert(remainingRange.length == 0);
@@ -1014,7 +1020,7 @@ static const uint8_t SRPayloadLenMask   = 0x7F;
             [self _handleFrameHeader:header curData:self->_currentFrameData];
         } else {
             [self _addConsumerWithDataLength:extra_bytes_needed callback:^(SRWebSocket *self, NSData *data) {
-                size_t mapped_size = data.length;
+                __unused size_t mapped_size = data.length;
                 const void *mapped_buffer = data.bytes;
                 size_t offset = 0;
                 
@@ -1325,6 +1331,7 @@ static const size_t SRFrameHeaderOverhead = 32;
         unmasked_payload =  (const uint8_t *)[data UTF8String];
     } else {
         assert(NO);
+        return;
     }
     
     if (payloadLength < 126) {
