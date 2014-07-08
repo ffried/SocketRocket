@@ -512,7 +512,11 @@ static __strong NSData *CRLFCRLF;
         
     NSMutableData *keyBytes = [[NSMutableData alloc] initWithLength:16];
     SecRandomCopyBytes(kSecRandomDefault, keyBytes.length, keyBytes.mutableBytes);
-    _secKey = keyBytes.base64Encoding;
+    if ([keyBytes respondsToSelector:@selector(base64EncodedStringWithOptions:)]) {
+        _secKey = [keyBytes base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+    } else {
+        _secKey = [keyBytes performSelector:@selector(base64Encoding) withObject:nil];
+    }
     assert([_secKey length] == 24);
     
     CFHTTPMessageSetHeaderFieldValue(request, CFSTR("Upgrade"), CFSTR("websocket"));
